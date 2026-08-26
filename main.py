@@ -2,7 +2,6 @@ from pathlib import Path
 import shutil
 import json
 import shlex
-import csv
 
 from colorama import init, Fore
 
@@ -11,14 +10,14 @@ from dqn_agent import DQNAgent
 from model_manager import (
     save_model,
     load_criteria,
-    get_round_count,
+    get_models_dir,
 )
 from title_encoder import TITLE_STATE_SIZE
 
 
 init(autoreset=True)
 
-MODEL_DIR = Path(__file__).resolve().parent / "models"
+MODEL_DIR = get_models_dir()
 
 
 class SearchAIFileSystem:
@@ -156,6 +155,7 @@ class SearchAIFileSystem:
             f"{len(criteria)}"
         )
 
+    @staticmethod
     def get_model_name():
         while True:
             name = input(
@@ -169,7 +169,7 @@ class SearchAIFileSystem:
                 continue
             
             invalid_characters = (
-                '<>:"/\\|?*'
+                '<>:"/\\|?*.'
             )
     
             if any(

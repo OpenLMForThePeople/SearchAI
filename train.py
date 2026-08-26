@@ -727,6 +727,21 @@ def train(model_name):
         return
 
     # ---------------------------------------------------------
+    # REVIEW TRAINING DATA
+    # ---------------------------------------------------------
+
+    result = review_menu(
+        training_data,
+        criteria
+    )
+
+    if result == "cancel":
+        print(
+            "\nTraining cancelled."
+        )
+        return
+
+    # ---------------------------------------------------------
     # TRAIN THE MODEL
     # ---------------------------------------------------------
 

@@ -1,10 +1,26 @@
 from pathlib import Path
 import json
+import sys
 
 import torch
 
 
-MODEL_DIR = Path(__file__).resolve().parent / "models"
+def get_app_dir():
+    if getattr(sys, "frozen", False):
+        return Path(
+            sys.executable
+        ).resolve().parent
+
+    return Path(
+        __file__
+    ).resolve().parent
+
+
+def get_models_dir():
+    return get_app_dir() / "models"
+
+
+MODEL_DIR = get_models_dir()
 
 
 def get_model_dir(model_name):
