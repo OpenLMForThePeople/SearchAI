@@ -1,123 +1,171 @@
 import torch
 import torch.nn as nn
+import torch.optim as optim
 
-from model import SearchAIModel
 
+class DQN(nn.Module):
 
-class DQNAgent:
     def __init__(
         self,
         state_size,
         criterion_count,
-        hidden_size=128,
-        learning_rate=0.001,
+        hidden_layers
     ):
-        self.state_size = state_size
-        self.criterion_count = criterion_count
+        super().__init__()
 
-        self.device = torch.device(
-            "cuda"
-            if torch.cuda.is_available()
-            else "cpu"
+        layers = []
+
+        input_size = state_size
+
+        for hidden_size in hidden_layers:
+
+            layers.append(
+                nn.Linear(
+                    input_size,
+                    hidden_size
+                )
+            )
+
+            layers.append(
+                nn.ReLU()
+            )
+
+            input_size = hidden_size
+
+        layers.append(
+            nn.Linear(
+                input_size,
+                criterion_count
+            )
         )
 
-        self.model = SearchAIModel(
+        self.network = nn.Sequential(
+            *layers
+        )
+
+    def forward(self, state):
+        return self.network(state)
+
+
+class DQNAgent:
+
+    def __init__(
+        self,
+        state_size,
+        criterion_count,
+        hidden_layers,
+        learning_rate=0.001
+    ):
+        if not hidden_layers:
+            raise ValueError(
+                "At least one hidden layer "
+                "is required."
+            )
+
+        if not isinstance(
+            hidden_layers,
+            (list, tuple)
+        ):
+            raise TypeError(
+                "hidden_layers must be "
+                "a list or tuple."
+            )
+
+        if any(
+            not isinstance(size, int)
+            or size <= 0
+            for size in hidden_layers
+        ):
+            raise ValueError(
+                "Every hidden layer size "
+                "must be a positive integer."
+            )
+
+        if state_size <= 0:
+            raise ValueError(
+                "state_size must be positive."
+            )
+
+        if criterion_count <= 0:
+            raise ValueError(
+                "criterion_count must be positive."
+            )
+
+        self.state_size = state_size
+
+        self.criterion_count = (
+            criterion_count
+        )
+
+        self.hidden_layers = list(
+            hidden_layers
+        )
+
+        self.learning_rate = learning_rate
+
+        self.model = DQN(
             state_size=state_size,
             criterion_count=criterion_count,
-            hidden_size=hidden_size,
-        ).to(self.device)
+            hidden_layers=self.hidden_layers
+        )
 
-        # Each criterion gets its OWN optimizer.
-        self.optimizers = [
-            torch.optim.Adam(
-                brain.parameters(),
-                lr=learning_rate,
-            )
-            for brain in self.model.brains
-        ]
+        self.optimizer = optim.Adam(
+            self.model.parameters(),
+            lr=learning_rate
+        )
 
-        self.loss_fn = nn.MSELoss()
+        self.loss_function = nn.MSELoss()
 
     def predict(self, state):
-        state = torch.tensor(
-            state,
-            dtype=torch.float32,
-            device=self.device,
-        ).unsqueeze(0)
+
+        if not torch.is_tensor(state):
+
+            state = torch.tensor(
+                state,
+                dtype=torch.float32
+            )
 
         with torch.no_grad():
-            outputs = self.model(state)
 
-        scores = []
+            output = self.model(
+                state
+            )
 
-        for output in outputs:
-            # The network outputs one value.
-            score = output.squeeze().item()
-
-            # Keep the prediction between 0 and 1.
-            score = max(0.0, min(1.0, score))
-
-            scores.append(score)
-
-        return scores
+        return output.tolist()
 
     def train_step(
         self,
         state,
-        targets,
+        targets
     ):
-        state = torch.tensor(
-            state,
-            dtype=torch.float32,
-            device=self.device,
-        ).unsqueeze(0)
 
-        total_loss = 0.0
+        if not torch.is_tensor(state):
 
-        for criterion_index in range(
-            self.criterion_count
-        ):
-            brain = self.model.brains[
-                criterion_index
-            ]
-
-            optimizer = self.optimizers[
-                criterion_index
-            ]
-
-            target = torch.tensor(
-                [targets[criterion_index]],
-                dtype=torch.float32,
-                device=self.device,
+            state = torch.tensor(
+                state,
+                dtype=torch.float32
             )
 
-            prediction = brain(
-                state
-            ).squeeze(1)
+        if not torch.is_tensor(targets):
 
-            loss = self.loss_fn(
-                prediction,
-                target,
+            targets = torch.tensor(
+                targets,
+                dtype=torch.float32
             )
 
-            optimizer.zero_grad()
+        prediction = self.model(
+            state
+        )
 
-            loss.backward()
+        loss = self.loss_function(
+            prediction,
+            targets
+        )
 
-            optimizer.step()
+        self.optimizer.zero_grad()
 
-            total_loss += loss.item()
+        loss.backward()
 
-        return total_loss
+        self.optimizer.step()
 
-
-def big_brain_decision(scores):
-    """
-    Every criterion must approve the video.
-    """
-
-    for score in scores:
-        if score < 0.5:
-            return False
-
-    return True
+        return loss.item()

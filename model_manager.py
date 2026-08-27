@@ -1,30 +1,44 @@
 from pathlib import Path
 import json
-import sys
-
 import torch
 
 
-def get_app_dir():
-    if getattr(sys, "frozen", False):
-        return Path(
-            sys.executable
-        ).resolve().parent
-
-    return Path(
-        __file__
-    ).resolve().parent
+import sys
+from pathlib import Path
 
 
 def get_models_dir():
-    return get_app_dir() / "models"
 
+    if getattr(
+        sys,
+        "frozen",
+        False
+    ):
+        base_dir = Path(
+            sys.executable
+        ).resolve().parent
 
-MODEL_DIR = get_models_dir()
+    else:
+        base_dir = Path(
+            __file__
+        ).resolve().parent
 
+    models_dir = (
+        base_dir / "models"
+    )
+
+    models_dir.mkdir(
+        parents=True,
+        exist_ok=True
+    )
+
+    return models_dir
 
 def get_model_dir(model_name):
-    return MODEL_DIR / model_name
+    return (
+        get_models_dir()
+        / model_name
+    )
 
 
 def get_model_path(model_name):
@@ -34,41 +48,14 @@ def get_model_path(model_name):
     )
 
 
-def get_criteria_path(model_name):
-    return (
-        get_model_dir(model_name)
-        / "criteria.json"
-    )
-
-
-def get_query_path(model_name):
-    return (
-        get_model_dir(model_name)
-        / "query.json"
-    )
-
-
-def load_criteria(model_name):
-    criteria_path = get_criteria_path(
-        model_name
-    )
-
-    if not criteria_path.exists():
-        return None
-
-    with open(
-        criteria_path,
-        "r",
-        encoding="utf-8"
-    ) as file:
-        return json.load(file)
-
-
 def save_model(
     agent,
     model_name,
     criteria,
     query,
+    hidden_layers,
+    input_size,
+    output_size,
 ):
     model_dir = get_model_dir(
         model_name
@@ -79,67 +66,67 @@ def save_model(
         exist_ok=True
     )
 
+    # ---------------------------------------------------------
+    # MODEL WEIGHTS
+    # ---------------------------------------------------------
+
     torch.save(
-        {
-            "model_state_dict":
-                agent.model.state_dict(),
-
-            "optimizer_state_dicts":
-                [
-                    optimizer.state_dict()
-                    for optimizer
-                    in agent.optimizers
-                ],
-
-            "state_size":
-                agent.state_size,
-
-            "criterion_count":
-                agent.criterion_count,
-        },
-        get_model_path(model_name),
+        agent.model.state_dict(),
+        model_dir / "model.pt"
     )
 
+    # ---------------------------------------------------------
+    # CRITERIA
+    # ---------------------------------------------------------
+
     with open(
-        get_criteria_path(model_name),
+        model_dir / "criteria.json",
         "w",
-        encoding="utf-8",
+        encoding="utf-8"
     ) as file:
+
         json.dump(
             criteria,
             file,
-            indent=4
+            indent=4,
+            ensure_ascii=False
         )
 
+    # ---------------------------------------------------------
+    # METADATA
+    # ---------------------------------------------------------
+
+    metadata = {
+        "query": query,
+        "input_size": input_size,
+        "hidden_layers": list(
+            hidden_layers
+        ),
+        "output_size": output_size,
+        "architecture": [
+            input_size,
+            *hidden_layers,
+            output_size,
+        ],
+    }
+
     with open(
-        get_query_path(model_name),
+        model_dir / "metadata.json",
         "w",
-        encoding="utf-8",
+        encoding="utf-8"
     ) as file:
+
         json.dump(
-            query,
+            metadata,
             file,
             indent=4
         )
 
 
-def load_query(model_name):
-    query_path = get_query_path(
-        model_name
-    )
-
-    if not query_path.exists():
-        return None
-
-    with open(
-        query_path,
-        "r",
-        encoding="utf-8"
-    ) as file:
-        return json.load(file)
-
-
-def load_model(agent, model_name):
+def load_model(
+    agent,
+    model_name
+):
     model_path = get_model_path(
         model_name
     )
@@ -147,108 +134,122 @@ def load_model(agent, model_name):
     if not model_path.exists():
         return False
 
-    checkpoint = torch.load(
-        model_path,
-        map_location=agent.device,
-    )
+    try:
 
-    saved_state_size = checkpoint.get(
-        "state_size"
-    )
-
-    if saved_state_size != agent.state_size:
-        print(
-            "\nModel architecture mismatch."
+        state_dict = torch.load(
+            model_path,
+            map_location="cpu"
         )
 
-        print(
-            f"Saved state size: "
-            f"{saved_state_size}"
+        agent.model.load_state_dict(
+            state_dict
         )
 
-        print(
-            f"Current state size: "
-            f"{agent.state_size}"
-        )
+        return True
 
-        return False
-
-    saved_criterion_count = checkpoint.get(
-        "criterion_count"
-    )
-
-    if (
-        saved_criterion_count
-        != agent.criterion_count
+    except (
+        OSError,
+        RuntimeError,
+        EOFError
     ):
-        print(
-            "\nCriterion count mismatch."
-        )
-
-        print(
-            f"Saved criteria: "
-            f"{saved_criterion_count}"
-        )
-
-        print(
-            f"Current criteria: "
-            f"{agent.criterion_count}"
-        )
-
         return False
 
-    agent.model.load_state_dict(
-        checkpoint["model_state_dict"]
+
+def load_criteria(model_name):
+
+    criteria_path = (
+        get_model_dir(model_name)
+        / "criteria.json"
     )
 
-    optimizer_states = checkpoint.get(
-        "optimizer_state_dicts"
+    if not criteria_path.exists():
+        return None
+
+    try:
+
+        with open(
+            criteria_path,
+            "r",
+            encoding="utf-8"
+        ) as file:
+
+            return json.load(file)
+
+    except (
+        OSError,
+        json.JSONDecodeError
+    ):
+        return None
+
+
+def load_metadata(model_name):
+
+    metadata_path = (
+        get_model_dir(model_name)
+        / "metadata.json"
     )
 
-    if optimizer_states:
-        if len(optimizer_states) != len(
-            agent.optimizers
-        ):
-            print(
-                "\nOptimizer count mismatch."
-            )
+    if not metadata_path.exists():
+        return None
 
-            return False
+    try:
 
-        for optimizer, state in zip(
-            agent.optimizers,
-            optimizer_states
-        ):
-            optimizer.load_state_dict(
-                state
-            )
+        with open(
+            metadata_path,
+            "r",
+            encoding="utf-8"
+        ) as file:
 
-    return True
+            return json.load(file)
 
-def get_round_count(model_name):
-    model_dir = get_model_dir(
+    except (
+        OSError,
+        json.JSONDecodeError
+    ):
+        return None
+
+
+def load_query(model_name):
+
+    metadata = load_metadata(
         model_name
     )
 
+    if metadata is None:
+        return None
+
+    return metadata.get(
+        "query"
+    )
+
+
+def get_round_count(model_name):
+
     round_file = (
-        model_dir / "round.txt"
+        get_model_dir(model_name)
+        / "round.txt"
     )
 
     if not round_file.exists():
         return 0
 
     try:
+
         return int(
             round_file.read_text(
                 encoding="utf-8"
             ).strip()
         )
 
-    except ValueError:
+    except (
+        OSError,
+        ValueError
+    ):
         return 0
 
 
 def increment_round(model_name):
+
     model_dir = get_model_dir(
         model_name
     )
@@ -258,15 +259,15 @@ def increment_round(model_name):
         exist_ok=True
     )
 
+    round_file = (
+        model_dir / "round.txt"
+    )
+
     rounds = get_round_count(
         model_name
     )
 
     rounds += 1
-
-    round_file = (
-        model_dir / "round.txt"
-    )
 
     round_file.write_text(
         str(rounds),
@@ -275,10 +276,18 @@ def increment_round(model_name):
 
     return rounds
 
-def get_training_backup_path(model_name):
+
+# =============================================================
+# TRAINING BACKUPS
+# =============================================================
+
+def get_training_backup_path(
+    model_name
+):
+
     return (
         get_model_dir(model_name)
-        / "training_backup.txt"
+        / "training_backup.json"
     )
 
 
@@ -291,16 +300,8 @@ def save_training_backup(
     video_index,
     criterion_index,
 ):
-    model_dir = get_model_dir(
-        model_name
-    )
 
-    model_dir.mkdir(
-        parents=True,
-        exist_ok=True
-    )
-
-    backup_data = {
+    backup = {
         "query": query,
         "criteria": criteria,
         "videos": videos,
@@ -309,45 +310,64 @@ def save_training_backup(
         "criterion_index": criterion_index,
     }
 
-    backup_file = get_training_backup_path(
+    backup_path = get_training_backup_path(
         model_name
     )
 
-    backup_file.write_text(
-        json.dumps(
-            backup_data,
-            indent=4
-        ),
+    backup_path.parent.mkdir(
+        parents=True,
+        exist_ok=True
+    )
+
+    with open(
+        backup_path,
+        "w",
         encoding="utf-8"
-    )
+    ) as file:
+
+        json.dump(
+            backup,
+            file,
+            indent=4,
+            ensure_ascii=False
+        )
 
 
-def load_training_backup(model_name):
-    backup_file = get_training_backup_path(
+def load_training_backup(
+    model_name
+):
+
+    backup_path = get_training_backup_path(
         model_name
     )
 
-    if not backup_file.exists():
+    if not backup_path.exists():
         return None
 
     try:
-        return json.loads(
-            backup_file.read_text(
-                encoding="utf-8"
-            )
-        )
+
+        with open(
+            backup_path,
+            "r",
+            encoding="utf-8"
+        ) as file:
+
+            return json.load(file)
 
     except (
-        json.JSONDecodeError,
-        OSError
+        OSError,
+        json.JSONDecodeError
     ):
         return None
 
 
-def delete_training_backup(model_name):
-    backup_file = get_training_backup_path(
+def delete_training_backup(
+    model_name
+):
+
+    backup_path = get_training_backup_path(
         model_name
     )
 
-    if backup_file.exists():
-        backup_file.unlink()
+    if backup_path.exists():
+        backup_path.unlink()

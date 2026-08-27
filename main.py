@@ -6,14 +6,14 @@ import shlex
 from colorama import init, Fore
 
 from train import train
+
 from dqn_agent import DQNAgent
+
 from model_manager import (
     save_model,
     load_criteria,
     get_models_dir,
 )
-from title_encoder import TITLE_STATE_SIZE
-
 
 init(autoreset=True)
 
@@ -358,9 +358,14 @@ class SearchAIFileSystem:
             )
             return
 
+        # ---------------------------------------------------------
+        # CREATE CRITERIA
+        # ---------------------------------------------------------
+
         print(
             "\nCreate criteria for this model."
         )
+
         print(
             "Enter an empty name when "
             "you're finished.\n"
@@ -369,6 +374,7 @@ class SearchAIFileSystem:
         criteria = []
 
         while True:
+
             criterion = input(
                 f"Criterion {len(criteria) + 1}: "
             ).strip()
@@ -376,7 +382,9 @@ class SearchAIFileSystem:
             if not criterion:
                 break
 
-            criteria.append(criterion)
+            criteria.append(
+                criterion
+            )
 
         if not criteria:
             print(
@@ -385,28 +393,208 @@ class SearchAIFileSystem:
             )
             return
 
+        # ---------------------------------------------------------
+        # CONFIGURE NETWORK ARCHITECTURE
+        # ---------------------------------------------------------
+
+        print()
+        print(
+            "Configure neural network architecture."
+        )
+
+        # ---------------------------------------------------------
+        # INPUT LAYER
+        # ---------------------------------------------------------
+
+        while True:
+
+            input_size_raw = input(
+                "\nInput layer size: "
+            ).strip()
+
+            try:
+                input_size = int(
+                    input_size_raw
+                )
+
+            except ValueError:
+                print(
+                    "Invalid input size. "
+                    "Enter a positive integer."
+                )
+                continue
+
+            if input_size <= 0:
+                print(
+                    "Input layer must contain "
+                    "at least one node."
+                )
+                continue
+
+            break
+
+        # ---------------------------------------------------------
+        # HIDDEN LAYERS
+        # ---------------------------------------------------------
+
+        print()
+        print(
+            "Enter hidden-layer sizes separated "
+            "by spaces."
+        )
+
+        print(
+            "Example: 128 64 32"
+        )
+
+        while True:
+
+            architecture_input = input(
+                "\nHidden layers: "
+            ).strip()
+
+            if not architecture_input:
+                print(
+                    "You must specify at least "
+                    "one hidden layer."
+                )
+                continue
+
+            try:
+                hidden_layers = [
+                    int(size)
+                    for size in
+                    architecture_input.split()
+                ]
+
+            except ValueError:
+                print(
+                    "Invalid architecture. "
+                    "Use positive integers separated "
+                    "by spaces."
+                )
+                continue
+
+            if any(
+                size <= 0
+                for size in hidden_layers
+            ):
+                print(
+                    "Every hidden layer must contain "
+                    "at least one node."
+                )
+                continue
+
+            break
+
+        # ---------------------------------------------------------
+        # OUTPUT LAYER
+        # ---------------------------------------------------------
+
+        while True:
+
+            output_size_raw = input(
+                "\nOutput layer size: "
+            ).strip()
+
+            try:
+                output_size = int(
+                    output_size_raw
+                )
+
+            except ValueError:
+                print(
+                    "Invalid output size. "
+                    "Enter a positive integer."
+                )
+                continue
+
+            if output_size <= 0:
+                print(
+                    "Output layer must contain "
+                    "at least one node."
+                )
+                continue
+
+            break
+
+        # ---------------------------------------------------------
+        # SHOW FINAL ARCHITECTURE
+        # ---------------------------------------------------------
+
+        architecture = [
+            input_size,
+            *hidden_layers,
+            output_size,
+        ]
+
+        print()
+
+        print(
+            "Network architecture:"
+        )
+
+        print(
+            " -> ".join(
+                map(
+                    str,
+                    architecture
+                )
+            )
+        )
+
+        confirm = input(
+            "\nCreate this network? (y/n): "
+        ).strip().lower()
+
+        if confirm != "y":
+
+            print(
+                "Model creation cancelled."
+            )
+            return
+
+        # ---------------------------------------------------------
+        # CREATE MODEL DIRECTORY
+        # ---------------------------------------------------------
+
         model_dir.mkdir()
+
+        # ---------------------------------------------------------
+        # SAVE CRITERIA
+        # ---------------------------------------------------------
 
         with open(
             model_dir / "criteria.json",
             "w",
             encoding="utf-8"
         ) as file:
+
             json.dump(
                 criteria,
                 file,
-                indent=4
+                indent=4,
+                ensure_ascii=False
             )
 
+        # ---------------------------------------------------------
+        # CREATE NEURAL NETWORK
+        # ---------------------------------------------------------
+
         agent = DQNAgent(
-            state_size=TITLE_STATE_SIZE,
-            criterion_count=len(criteria),
+            state_size=input_size,
+            criterion_count=output_size,
+            hidden_layers=hidden_layers,
         )
 
-        # train()/model_manager currently work
-        # with a model name relative to models/.
-        relative_model = model_dir.relative_to(
-            self.root
+        # ---------------------------------------------------------
+        # SAVE MODEL
+        # ---------------------------------------------------------
+
+        relative_model = (
+            model_dir.relative_to(
+                self.root
+            )
         )
 
         save_model(
@@ -414,7 +602,14 @@ class SearchAIFileSystem:
             str(relative_model),
             criteria,
             query,
+            hidden_layers=hidden_layers,
+            input_size=input_size,
+            output_size=output_size,
         )
+
+        # ---------------------------------------------------------
+        # RESULTS
+        # ---------------------------------------------------------
 
         print(
             f"\nModel '{name}' created."
@@ -426,9 +621,27 @@ class SearchAIFileSystem:
             criteria,
             start=1
         ):
+
             print(
                 f"{index}. {criterion}"
             )
+
+        print()
+
+        print(
+            "Network architecture:"
+        )
+
+        print(
+            " -> ".join(
+                map(
+                    str,
+                    architecture
+                )
+            )
+        )
+
+
 
     def delete(self, target):
         try:

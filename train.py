@@ -6,6 +6,7 @@ from model_manager import (
     load_model,
     load_criteria,
     load_query,
+    load_metadata,
     save_model,
     get_model_dir,
     get_round_count,
@@ -17,8 +18,7 @@ from model_manager import (
 )
 
 from title_encoder import (
-    encode_title,
-    TITLE_STATE_SIZE,
+    encode_title_and_channel,
 )
 
 class TrainingInterrupted(Exception):
@@ -380,9 +380,119 @@ def train(model_name):
         )
         return
 
+    # ---------------------------------------------------------
+    # LOAD USER-DEFINED NETWORK ARCHITECTURE
+    # ---------------------------------------------------------
+
+    metadata = load_metadata(
+        model_name
+    )
+
+    if metadata is None:
+        print(
+            "Could not load model metadata."
+        )
+        return
+
+    input_size = metadata.get(
+        "input_size"
+    )
+
+    hidden_layers = metadata.get(
+        "hidden_layers"
+    )
+
+    output_size = metadata.get(
+        "output_size"
+    )
+
+    if not isinstance(
+        input_size,
+        int
+    ) or input_size <= 0:
+        print(
+            "Invalid model input size."
+        )
+        return
+
+    if not isinstance(
+        hidden_layers,
+        list
+    ) or not hidden_layers:
+
+        print(
+            "Invalid model hidden-layer "
+            "configuration."
+        )
+        return
+
+    if not all(
+        isinstance(size, int)
+        and size > 0
+        for size in hidden_layers
+    ):
+        print(
+            "Invalid model hidden-layer "
+            "configuration."
+        )
+        return
+
+    if not isinstance(
+        output_size,
+        int
+    ) or output_size <= 0:
+        print(
+            "Invalid model output size."
+        )
+        return
+
+    if output_size != len(criteria):
+        print(
+            "\nModel architecture is "
+            "inconsistent with its criteria."
+        )
+
+        print(
+            f"Output nodes: {output_size}"
+        )
+
+        print(
+            f"Criteria:     {len(criteria)}"
+        )
+
+        print(
+            "The output layer must have "
+            "one node per criterion."
+        )
+
+        return
+
+    print()
+    print(
+        "Network architecture:"
+    )
+
+    print(
+        " -> ".join(
+            map(
+                str,
+                [
+                    input_size,
+                    *hidden_layers,
+                    output_size,
+                ]
+            )
+        )
+    )
+
+    # ---------------------------------------------------------
+    # CREATE THE EXACT NETWORK THE USER CHOSE
+    # ---------------------------------------------------------
+
     agent = DQNAgent(
-        state_size=TITLE_STATE_SIZE,
-        criterion_count=len(criteria),
+        state_size=input_size,
+        criterion_count=output_size,
+        hidden_layers=hidden_layers,
     )
 
     if not load_model(
@@ -579,8 +689,10 @@ def train(model_name):
                 f"{video['url']}"
             )
 
-            state = encode_title(
-                video["title"]
+            state = encode_title_and_channel(
+                video["title"],
+                video["channel"],
+                state_size=input_size
             )
 
             show_prediction(
@@ -770,7 +882,10 @@ def train(model_name):
         agent,
         model_name,
         criteria,
-        query
+        query,
+        hidden_layers=hidden_layers,
+        input_size=input_size,
+        output_size=output_size,
     )
 
     round_count = increment_round(
