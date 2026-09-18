@@ -1,3 +1,5 @@
 torch
 colorama
 tensorboard
+yt-dlp
+googlesearch-python

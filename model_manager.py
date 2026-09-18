@@ -4,7 +4,6 @@ import torch
 
 
 import sys
-from pathlib import Path
 
 
 def get_models_dir():
@@ -56,6 +55,7 @@ def save_model(
     hidden_layers,
     input_size,
     output_size,
+    engine,
 ):
     model_dir = get_model_dir(
         model_name
@@ -98,6 +98,7 @@ def save_model(
 
     metadata = {
         "query": query,
+        "engine": engine,
         "input_size": input_size,
         "hidden_layers": list(
             hidden_layers

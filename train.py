@@ -1,4 +1,9 @@
-from search import search_youtube
+from search_yt import search_youtube
+from search_google import (
+    search_google,
+    GoogleBlockedError,
+)
+
 from dqn_agent import DQNAgent
 import csv
 
@@ -20,6 +25,7 @@ from model_manager import (
 from title_encoder import (
     encode_title_and_channel,
 )
+
 
 class TrainingInterrupted(Exception):
     pass
@@ -394,6 +400,11 @@ def train(model_name):
         )
         return
 
+    engine = metadata.get(
+        "engine",
+        "yt"
+    )
+
     input_size = metadata.get(
         "input_size"
     )
@@ -610,14 +621,48 @@ def train(model_name):
                 f"{index}. {criterion}"
             )
 
-        print(
-            "\nSearching YouTube..."
-        )
+        if engine == "google":
+            print("\nSearching Google...")
+        
+            try:
+                google_results = search_google(
+                    query,
+                    max_results=10
+                )
+        
+            except GoogleBlockedError as e:
+                print(f"\nGoogle search error: {e}")
+                return
+        
+            videos = []
+        
+            for result in google_results:
+                videos.append({
+                    "title": result.get("title", ""),
+                    "channel": "",
+                    "url": result.get("url", ""),
+                    "description": result.get("description", ""),
+                })
 
-        videos = search_youtube(
-            query,
-            max_results=10
-        )
+        elif engine == "yt":
+        
+            print(
+                "\nSearching YouTube..."
+            )
+
+            videos = search_youtube(
+                query,
+                max_results=10
+            )
+
+        else:
+        
+            print(
+                f"\nUnsupported search engine: "
+                f"{engine}"
+            )
+
+            return
 
         if not videos:
             print(
@@ -625,9 +670,16 @@ def train(model_name):
             )
             return
 
-        print(
-            f"\nFound {len(videos)} videos."
-        )
+        if engine == "google":
+            print(
+                f"\nFound {len(videos)} Google "
+                "search results."
+            )
+        else:
+            print(
+                f"\nFound {len(videos)} YouTube "
+                "videos."
+            )
 
         # Save the search results immediately.
         # This guarantees that a resume uses
@@ -883,6 +935,7 @@ def train(model_name):
         model_name,
         criteria,
         query,
+        engine=engine,
         hidden_layers=hidden_layers,
         input_size=input_size,
         output_size=output_size,

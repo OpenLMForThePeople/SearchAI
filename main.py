@@ -161,17 +161,17 @@ class SearchAIFileSystem:
             name = input(
                 "\nModel name: "
             ).strip()
-    
+
             if not name:
                 print(
                     "Model name cannot be empty."
                 )
                 continue
-            
+
             invalid_characters = (
                 '<>:"/\\|?*.'
             )
-    
+
             if any(
                 char in name
                 for char in invalid_characters
@@ -182,7 +182,7 @@ class SearchAIFileSystem:
                     'Avoid: < > : " / \\ | ? *'
                 )
                 continue
-            
+
             return name
 
     def is_model(self, path):
@@ -297,6 +297,10 @@ class SearchAIFileSystem:
             "is not a directory or model."
         )
 
+    # ---------------------------------------------------------
+    # OPEN MODEL
+    # ---------------------------------------------------------
+
     def open_model(self, path):
         model_name = path.name
 
@@ -334,13 +338,39 @@ class SearchAIFileSystem:
                 "Invalid option."
             )
 
-
+    # ---------------------------------------------------------
+    # CREATE MODEL
+    # ---------------------------------------------------------
 
     def create_model(self):
         name = SearchAIFileSystem.get_model_name()
 
+        # ---------------------------------------------------------
+        # ENGINE & QUERY SELECTION
+        # ---------------------------------------------------------
+
+        while True:
+            engine_input = input(
+                "\nSelect search engine (y/g/yt/gg/youtube/google): "
+            ).strip().lower()
+
+            if engine_input in ("y", "yt", "youtube"):
+                engine = "yt"
+                engine_display = "YouTube"
+                break
+
+            elif engine_input in ("g", "gg", "google"):
+                engine = "google"
+                engine_display = "Google"
+                break
+
+            print(
+                "Invalid choice. "
+                "Valid options: y, g, yt, gg, youtube, google."
+            )
+
         query = input(
-            "\nPermanent YouTube search query: "
+            f"\nPermanent {engine_display} search query: "
         ).strip()
 
         if not query:
@@ -602,6 +632,7 @@ class SearchAIFileSystem:
             str(relative_model),
             criteria,
             query,
+            engine=engine,
             hidden_layers=hidden_layers,
             input_size=input_size,
             output_size=output_size,
@@ -612,7 +643,7 @@ class SearchAIFileSystem:
         # ---------------------------------------------------------
 
         print(
-            f"\nModel '{name}' created."
+            f"\nModel '{name}' created for {engine_display} search."
         )
 
         print("\nCriteria:")
@@ -641,7 +672,9 @@ class SearchAIFileSystem:
             )
         )
 
-
+    # ---------------------------------------------------------
+    # DELETE
+    # ---------------------------------------------------------
 
     def delete(self, target):
         try:
@@ -693,6 +726,10 @@ class SearchAIFileSystem:
         print(
             f"Deleted '{path.name}'."
         )
+
+    # ---------------------------------------------------------
+    # ROUND COUNT
+    # ---------------------------------------------------------
 
     def get_round_count(self, target):
         try:
@@ -770,25 +807,85 @@ class SearchAIFileSystem:
         )
 
         return rounds
-    
 
 
-        
+# ---------------------------------------------------------
+# BANNERS
+# ---------------------------------------------------------
+
+def print_searchai_logo(logo_str: str):
+    """
+    Prints a multi-line ASCII logo in 4 quadrants:
+    Red (Top-Left), Yellow (Top-Right)
+    Blue (Bottom-Left), Green (Bottom-Right)
+    """
+
+    RED = (252, 65, 61)
+    YELLOW = (255, 190, 0)
+    BLUE = (49, 134, 255)
+    GREEN = (0, 175, 87)
+
+    def get_color_code(r, g, b):
+        return f"\033[38;2;{r};{g};{b}m"
+
+    RESET = "\033[0m"
+
+    lines = logo_str.strip("\n").split("\n")
+
+    if not lines:
+        return
+
+    height = len(lines)
+    width = max(len(line) for line in lines)
+
+    mid_y = height // 2
+    mid_x = width // 2
+
+    for y, line in enumerate(lines):
+        colored_line = ""
+        padded_line = line.ljust(width)
+
+        for x, char in enumerate(padded_line):
+
+            if char == " " or char == "\xa0":
+                colored_line += " "
+                continue
+
+            if y < mid_y:
+                color = RED if x < mid_x else YELLOW
+            else:
+                color = BLUE if x < mid_x else GREEN
+
+            colored_line += (
+                f"{get_color_code(*color)}{char}"
+            )
+
+        print(colored_line + RESET)
 
 
 def print_banner():
-    print(
-        Fore.RED +
-        r"""
-   _____                     _              _____
-  / ____|                   | |       /\   |_   _|
- | (___   ___  __ _ _ __ ___| |__    /  \    | |
-  \___ \ / _ \/ _` | '__/ __| '_ \  / /\ \   | |
-  ____) |  __/ (_| | | | (__| | | |/ ____ \ _| |_
- |_____/ \___|\__,_|_|  \___|_| |_/_/    \_\_____|
-        """
-    )
+    """
+    GitHub-compatible banner function.
 
+    The four-quadrant logo remains the actual banner
+    used by the TUI.
+    """
+
+    ascii_logo = r"""
+       _____                     _              _____ 
+      / ____|                   | |       /\   |_   _|
+     | (___   ___  __ _ _ __ ___| |__    /  \    | |
+      \___ \ / _ \/ _` | '__/ __| '_ \  / /\ \   | |
+      ____) |  __/ (_| | | | (__| | | |/ ____ \ _| |_
+     |_____/ \___|\__,_|_|  \___|_| |_/_/    \_\_____|
+    """
+
+    print_searchai_logo(ascii_logo)
+
+
+# ---------------------------------------------------------
+# HELP
+# ---------------------------------------------------------
 
 def print_help():
     print()
@@ -863,6 +960,10 @@ def print_help():
     print()
 
 
+# ---------------------------------------------------------
+# TUI
+# ---------------------------------------------------------
+
 def tui():
     filesystem = SearchAIFileSystem(
         MODEL_DIR
@@ -900,20 +1001,20 @@ def tui():
 
         try:
             parts = shlex.split(command)
-        
+
         except ValueError as error:
             print(
                 f"SearchAI: {error}"
             )
             continue
-        
+
         if not parts:
             continue
-        
+
         command_name = parts[0].lower()
-        
+
         argument = ""
-        
+
         if len(parts) > 1:
             argument = " ".join(parts[1:])
 
@@ -1042,14 +1143,18 @@ def tui():
                 argument
             )
 
+        # -------------------------
+        # round
+        # -------------------------
+
         elif command_name == "round":
-        
+
             if not argument:
                 print(
                     "Usage: round <model>"
                 )
                 continue
-            
+
             filesystem.get_round_count(
                 argument
             )
