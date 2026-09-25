@@ -76,6 +76,66 @@ async function loadExplorer(path = "") {
     }
 }
 
+function createFolder() {
+    document.getElementById('folder-name').value = '';
+    document.getElementById('folder-layer').style.display = 'flex';
+
+    setTimeout(() => {
+        document.getElementById('folder-name').focus();
+    }, 0);
+}
+
+function closeFolderWizard() {
+    document.getElementById('folder-layer').style.display = 'none';
+}
+
+async function submitFolder() {
+    const input = document.getElementById('folder-name');
+    const folderName = input.value.trim();
+
+    if (!folderName) {
+        input.focus();
+        return;
+    }
+
+    try {
+        const response = await fetch('/api/mkdir', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                name: folderName
+            })
+        });
+
+        const res = await response.json();
+
+        if (res.status === 'success') {
+            closeFolderWizard();
+            loadExplorer(currentPath);
+        } else {
+            // Keep the error INSIDE the SearchAI window
+            input.focus();
+            input.setCustomValidity(res.message || 'Failed to create folder.');
+            input.reportValidity();
+
+            setTimeout(() => {
+                input.setCustomValidity('');
+            }, 2500);
+        }
+    } catch (err) {
+        console.error('Failed to create folder:', err);
+
+        input.focus();
+        input.setCustomValidity('Failed to connect to SearchAI server.');
+        input.reportValidity();
+
+        setTimeout(() => {
+            input.setCustomValidity('');
+        }, 2500);
+    }
+}
 // --- LAYER 2C: CREATION WIZARD ---
 function startCreationWizard() {
     wizardStep = 1;

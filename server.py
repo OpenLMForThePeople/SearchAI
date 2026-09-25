@@ -50,6 +50,27 @@ async def create_model(payload: CreateModelPayload):
     except Exception as e:
         return {"status": "error", "message": str(e)}
 
+@app.post("/api/mkdir")
+async def create_folder(data: dict):
+    try:
+        name = data.get("name", "").strip()
+
+        result = filesystem.create_folder_headless(name)
+
+        return result
+
+    except ValueError as error:
+        return {
+            "status": "error",
+            "message": str(error)
+        }
+
+    except Exception as error:
+        return {
+            "status": "error",
+            "message": f"Failed to create folder: {error}"
+        }
+
 class TrainInitPayload(BaseModel):
     model_name: str
 

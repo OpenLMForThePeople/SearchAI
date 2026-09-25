@@ -45,6 +45,16 @@ p {
     z-index: 100;
 }
 
+#creation-layer h1,
+#creation-layer h2,
+#creation-layer h3,
+#creation-layer h4,
+#creation-layer p,
+#creation-layer label,
+#creation-layer span {
+    color: #ffffff;
+}
+
 .wizard-container {
     display: flex;
     flex-direction: column;
@@ -129,6 +139,30 @@ input:focus, select:focus {
     background: transparent;
     color: #ffffff;
     border: 1px solid #ffffff;
+}
+
+/* --- Folder Creation Overlay --- */
+#folder-layer {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background-color: rgba(139, 0, 0, 0.95);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    z-index: 200;
+}
+
+#folder-layer h1,
+#folder-layer h2,
+#folder-layer h3,
+#folder-layer h4,
+#folder-layer p,
+#folder-layer label,
+#folder-layer span {
+    color: #ffffff;
 }
 
 /* --- Interactive Training Controls --- */

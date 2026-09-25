@@ -301,6 +301,39 @@ class SearchAIFileSystem:
         path.mkdir(parents=True, exist_ok=False)
         print(f"Directory '{name}' created.")
 
+    def create_folder_headless(self, name: str):
+        """
+        Headless folder creation method for the website API.
+        """
+        name = str(name).strip()
+    
+        if not name:
+            raise ValueError("Folder name cannot be empty.")
+    
+        invalid_characters = '<>:"/\\|?*.'
+        if any(char in name for char in invalid_characters):
+            raise ValueError(
+                "Folder name contains invalid characters."
+            )
+    
+        path = self.current / name
+    
+        if path.exists():
+            raise ValueError(
+                f"Model or folder '{name}' already exists."
+            )
+    
+        path.mkdir(
+            parents=True,
+            exist_ok=False
+        )
+    
+        return {
+            "status": "success",
+            "name": name,
+            "path": str(path.relative_to(self.root))
+        }
+
     def open(self, target):
         try:
             path = self.resolve(target)
