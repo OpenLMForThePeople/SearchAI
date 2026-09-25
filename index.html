@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <title>SearchAI</title>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/icon?family=Material+Icons">
+        <link rel="stylesheet" href="style.css">
+    </head>
+    <body>
+        <!-- Top Toolbar -->
+        <div style="padding: 20px; text-align: center;">
+            <button class="explorer-btn" onclick="startCreationWizard()">
+                <span class="material-icons">add_circle</span> Create New Model
+            </button>
+        </div>
+
+        <!-- Layer 1 Container -->
+        <div id="explorer-container" style="display: flex; flex-wrap: wrap; gap: 10px; padding: 20px; justify-content: center;">
+            <button disabled class="explorer-btn">Loading models...</button>
+        </div>
+
+        <!-- Layer 2C: Creation Wizard (Centered Overlay) -->
+        <div id="creation-layer">
+            <div class="wizard-container">
+                <h2 id="wizard-title">Create Model</h2>
+                
+                <!-- Step 1: Name -->
+                <div id="step-1" class="wizard-step active">
+                    <label>Model Name:</label>
+                    <input type="text" id="model-name" placeholder="e.g. dqn_v1">
+                </div>
+
+                <!-- Step 2: Engine & Query -->
+                <div id="step-2" class="wizard-step">
+                    <label>Search Engine:</label>
+                    <select id="model-engine">
+                        <option value="yt">YouTube</option>
+                        <option value="google">Google</option>
+                    </select>
+                    <label>Permanent Query:</label>
+                    <input type="text" id="model-query" placeholder="e.g. machine learning tutorial">
+                </div>
+
+                <!-- Step 3: Criteria -->
+                <div id="step-3" class="wizard-step">
+                    <label>Add Criteria (Press Enter):</label>
+                    <input type="text" id="criteria-input" placeholder="e.g. High audio quality">
+                    <ul id="criteria-list"></ul>
+                </div>
+
+                <!-- Step 4: Architecture -->
+                <div id="step-4" class="wizard-step">
+                    <label>Input Layer Size:</label>
+                    <input type="number" id="model-input-size" value="10" min="1">
+                    
+                    <label>Hidden Layers (Space separated):</label>
+                    <input type="text" id="model-hidden-layers" placeholder="128 64 32" value="128 64 32">
+                    
+                    <label>Output Layer Size:</label>
+                    <input type="number" id="model-output-size" value="5" min="1" readonly>
+                </div>
+
+                <!-- Layer 3A: Confirmation (Step 5) -->
+                <div id="step-5" class="wizard-step">
+                    <h3>Confirm Architecture</h3>
+                    <p id="confirm-summary"></p>
+                    <div style="display: flex; gap: 10px; justify-content: center;">
+                        <button class="action-btn" onclick="submitModel()">Execute Build</button>
+                        <button class="action-btn cancel-btn" onclick="closeWizard()">Cancel</button>
+                    </div>
+                </div>
+
+                <!-- Navigation Controls -->
+                <div class="wizard-nav" id="wizard-nav">
+                    <button class="explorer-btn" id="prev-btn" onclick="prevStep()">Back</button>
+                    <button class="explorer-btn" id="next-btn" onclick="nextStep()">Next</button>
+                    <button class="explorer-btn" id="cancel-btn" onclick="closeWizard()" style="border-color: #ff4444; color: #ff4444;">Abort</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Layer 2A & 3A: Model Interactive Training Overlay -->
+        <div id="training-layer" class="overlay">
+            <div class="wizard-container" style="width: 550px; max-width: 90vw;">
+                <h2 id="train-model-title">Training: [Model]</h2>
+                
+                <!-- Loading Indicator -->
+                <div id="train-loading" style="display: none;">
+                    <p>Fetching search results and checking history memory...</p>
+                </div>
+
+                <!-- Interactive Scoring Wizard -->
+                <div id="train-content" style="display: none; width: 100%;">
+                    <div id="video-info-box" style="background: rgba(255,255,255,0.05); padding: 15px; border-radius: 8px; text-align: left; margin-bottom: 15px;">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 5px;">
+                            <span id="video-counter" style="font-size: 12px; color: #aaa; text-transform: uppercase;">Video 1 of 10</span>
+                            <!-- Memory indicator badge -->
+                            <span id="memory-badge" class="memory-badge" style="display: none;">⚡ Memory Auto-Filled</span>
+                        </div>
+                        <h3 id="video-title" style="margin: 5px 0; font-size: 16px; color: #fff;">Title</h3>
+                        <p id="video-channel" style="margin: 0; font-size: 13px; color: #bbb;">Channel</p>
+                        <a id="video-url" href="#" target="_blank" style="font-size: 12px; color: #ff6666; display: inline-block; margin-top: 5px;">Open Link</a>
+                    </div>
+
+                    <!-- Criteria Inputs -->
+                    <div id="criteria-scores-container" style="display: flex; flex-direction: column; gap: 10px; max-height: 200px; overflow-y: auto; padding-right: 5px;">
+                        <!-- Dynamically populated per video -->
+                    </div>
+
+                    <!-- Video Nav -->
+                    <div class="wizard-nav" style="margin-top: 15px; justify-content: space-between;">
+                        <button class="explorer-btn" id="prev-video-btn" onclick="prevVideo()">Previous</button>
+                        <button class="explorer-btn" id="next-video-btn" onclick="nextVideo()">Next Video</button>
+                    </div>
+                </div>
+
+                <!-- Layer 3A: Final Confirmation Step -->
+                <div id="train-review" style="display: none; width: 100%;">
+                    <h3>Training Ready</h3>
+                    <p id="review-summary-text">All videos evaluated. Ready to update network weights?</p>
+                    <div style="display: flex; gap: 10px; justify-content: center; margin-top: 15px;">
+                        <button class="action-btn" onclick="submitTrainingSession()">ENGAGE TRAINING</button>
+                        <button class="action-btn cancel-btn" onclick="closeTrainingWizard()">Abort</button>
+                    </div>
+                </div>
+
+                <!-- Close / Abort -->
+                <div style="margin-top: 15px;">
+                    <button class="action-btn cancel-btn" onclick="closeTrainingWizard()" style="font-size: 12px; padding: 5px 15px;">Close</button>
+                </div>
+            </div>
+        </div>
+
+        <script src="script.js"></script>
+    </body>
+</html>

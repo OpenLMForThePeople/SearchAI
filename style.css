@@ -1,0 +1,230 @@
+body {
+    background-color: red;
+    font-family: 'Arial';
+    margin: 0;
+    padding: 0;
+}
+
+p {
+    color: white;
+}
+
+.explorer-btn {
+    background: transparent;
+    border: 1px solid #ffffff;
+    border-radius: 8px;
+    color: #ffffff;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 14px;
+    cursor: pointer;
+    outline: none;
+    font-family: inherit;
+    font-size: 14px;
+    transition: background-color 0.2s ease, border-color 0.2s ease;
+}
+
+.explorer-btn:hover {
+    background-color: rgba(255, 255, 255, 0.12);
+    border-color: #ffffff;
+}
+
+/* --- Layer 2C Centered Overlay --- */
+#creation-layer {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background-color: rgba(139, 0, 0, 0.95);
+    display: none;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    z-index: 100;
+}
+
+.wizard-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 20px;
+    background: #000000;
+    padding: 40px;
+    border-radius: 12px;
+    border: 2px solid #ffffff;
+    box-shadow: 0px 10px 30px rgba(0,0,0,0.5);
+    width: 400px;
+    text-align: center;
+}
+
+.wizard-step {
+    display: none;
+    flex-direction: column;
+    align-items: center;
+    gap: 15px;
+    width: 100%;
+}
+
+.wizard-step.active {
+    display: flex;
+}
+
+/* Inputs & Forms */
+input, select {
+    padding: 10px;
+    border-radius: 6px;
+    border: 1px solid #ffffff;
+    background: transparent;
+    color: #ffffff;
+    font-size: 16px;
+    text-align: center;
+    width: 80%;
+    outline: none;
+    font-family: inherit;
+}
+
+input:focus, select:focus {
+    background-color: rgba(255, 255, 255, 0.1);
+}
+
+.wizard-nav {
+    display: flex;
+    gap: 10px;
+    margin-top: 20px;
+}
+
+#criteria-list {
+    list-style: none;
+    padding: 0;
+    width: 80%;
+    max-height: 120px;
+    overflow-y: auto;
+    border: 1px solid rgba(255,255,255,0.3);
+    border-radius: 6px;
+}
+
+#criteria-list li {
+    background: rgba(255,255,255,0.1);
+    margin: 4px;
+    padding: 6px;
+    border-radius: 4px;
+    font-size: 14px;
+    color: #fff;
+}
+
+.action-btn {
+    background: #ffffff;
+    color: red;
+    padding: 10px 20px;
+    font-weight: bold;
+    border-radius: 8px;
+    border: none;
+    cursor: pointer;
+    font-family: inherit;
+}
+
+.cancel-btn {
+    background: transparent;
+    color: #ffffff;
+    border: 1px solid #ffffff;
+}
+
+/* --- Interactive Training Controls --- */
+.criterion-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: rgba(255, 255, 255, 0.08);
+    padding: 8px 12px;
+    border-radius: 6px;
+}
+
+.criterion-label {
+    font-size: 13px;
+    text-align: left;
+    flex: 1;
+    color: #ffffff;
+}
+
+.criterion-prediction {
+    font-size: 11px;
+    color: #aaa;
+    margin-right: 10px;
+}
+
+.criterion-score-input {
+    width: 60px !important;
+    padding: 4px !important;
+    font-size: 14px !important;
+    text-align: center;
+}
+
+/* --- History Memory Badge --- */
+.memory-badge {
+    background-color: #2e7d32;
+    color: #ffffff;
+    font-size: 11px;
+    padding: 3px 8px;
+    border-radius: 12px;
+    font-weight: bold;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    border: 1px solid #4caf50;
+}
+
+/* Training Layer Modal Overlay */
+#training-layer {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background-color: rgba(0, 0, 0, 0.75);
+    backdrop-filter: blur(4px);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    z-index: 9999;
+    color: #ffffff;
+}
+
+/* Central Training Box */
+#training-modal-box, 
+.training-container {
+    background-color: #1e1e24;
+    border: 1px solid #33333f;
+    border-radius: 12px;
+    padding: 24px;
+    width: 90%;
+    max-width: 800px;
+    max-height: 85vh;
+    overflow-y: auto;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+    color: #f0f0f0;
+}
+
+#training-layer h1, 
+#training-layer h2, 
+#training-layer h3, 
+#training-layer h4, 
+#training-layer p, 
+#training-layer label, 
+#training-layer span, 
+#train-model-title {
+    color: #ffffff !important;
+}
+
+#training-layer .subtext,
+#training-layer .muted-text {
+    color: #a0a0b0 !important;
+}
+
+#train-loading {
+    text-align: center;
+    padding: 40px 0;
+    font-size: 1.1rem;
+    color: #3b82f6;
+}

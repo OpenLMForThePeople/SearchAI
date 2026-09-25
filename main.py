@@ -30,8 +30,8 @@ class SearchAIFileSystem:
             exist_ok=True
         )
 
-    def resolve(self, target):
-        target = target.strip()
+    def resolve(self, target=""):
+        target = str(target).strip()
 
         if not target:
             return self.current
@@ -50,7 +50,6 @@ class SearchAIFileSystem:
 
         try:
             resolved.relative_to(self.root)
-
         except ValueError:
             raise ValueError(
                 "Cannot navigate outside SearchAI."
@@ -61,7 +60,6 @@ class SearchAIFileSystem:
     def cd(self, target):
         try:
             path = self.resolve(target)
-
         except ValueError as error:
             print(f"cd: {error}")
             return
@@ -95,96 +93,6 @@ class SearchAIFileSystem:
 
         return "\\" + str(relative)
 
-    def list_criteria(self, target):
-        try:
-            path = self.resolve(target)
-
-        except ValueError as error:
-            print(
-                f"criteria: {error}"
-            )
-            return
-
-        if not path.exists():
-            print(
-                f"criteria: '{target}' "
-                "does not exist."
-            )
-            return
-
-        if not self.is_model(path):
-            print(
-                f"criteria: '{target}' "
-                "is not a model."
-            )
-            return
-
-        model_name = str(
-            path.relative_to(self.root)
-        )
-
-        criteria = load_criteria(
-            model_name
-        )
-
-        if criteria is None:
-            print(
-                f"Could not load criteria "
-                f"for model: {model_name}"
-            )
-            return
-
-        print()
-        print(
-            f"Criteria for: {path.name}"
-        )
-        print("=" * 60)
-
-        for index, criterion in enumerate(
-            criteria,
-            start=1
-        ):
-            print(
-                f"{index}. {criterion}"
-            )
-
-        print("=" * 60)
-
-        print(
-            f"Total criteria: "
-            f"{len(criteria)}"
-        )
-
-    @staticmethod
-    def get_model_name():
-        while True:
-            name = input(
-                "\nModel name: "
-            ).strip()
-
-            if not name:
-                print(
-                    "Model name cannot be empty."
-                )
-                continue
-
-            invalid_characters = (
-                '<>:"/\\|?*.'
-            )
-
-            if any(
-                char in name
-                for char in invalid_characters
-            ):
-                print(
-                    'Model name contains an '
-                    'invalid character. '
-                    'Avoid: < > : " / \\ | ? *'
-                )
-                continue
-
-            return name
-
     def is_model(self, path):
         if not path.is_dir():
             return False
@@ -206,426 +114,84 @@ class SearchAIFileSystem:
             )
         )
 
-    def dir(self):
+    # ---------------------------------------------------------
+    # PROGRAMMATIC API METHODS FOR WEBSITES / BACKENDS
+    # ---------------------------------------------------------
+
+    def get_directory_items(self, target=""):
+        """
+        Structured list of items for Layer 1 Web Explorer API endpoints.
+        """
+        path = self.resolve(target)
+        if not path.exists() or not path.is_dir():
+            return []
+
         items = sorted(
-            self.current.iterdir(),
-            key=lambda path: (
-                not path.is_dir(),
-                path.name.lower()
-            )
+            path.iterdir(),
+            key=lambda p: (not p.is_dir(), p.name.lower())
         )
 
-        if not items:
-            print("(empty)")
-            return
-
-        print()
-
+        result = []
         for item in items:
             if item.is_dir():
-
-                if self.is_model(item):
-                    print(
-                        Fore.CYAN + f"[MODEL 🤖] {item.name}"
-                    )
-                else:
-                    print(
-                        Fore.YELLOW + f"[DIR 📁]   {item.name}"
-                    )
-
+                item_type = "model" if self.is_model(item) else "folder"
             else:
-                print(
-                    f"[FILE 📄]  {item.name}"
-                )
+                item_type = "file"
+            
+            result.append({
+                "name": item.name,
+                "type": item_type,
+                "relative_path": str(item.relative_to(self.root))
+            })
 
-    def mkdir(self, name):
-        if not name:
-            print(
-                "Usage: mkdir <folder>"
-            )
-            return
+        return result
 
-        try:
-            path = self.resolve(name)
+    def create_model_headless(
+        self,
+        name: str,
+        engine: str,
+        query: str,
+        criteria: list,
+        input_size: int,
+        hidden_layers: list,
+        output_size: int
+    ):
+        """
+        Headless non-interactive model creation method for website_api.py.
+        """
+        invalid_characters = '<>:"/\\|?*.'
+        if any(char in name for char in invalid_characters):
+            raise ValueError(f"Model name contains invalid characters.")
 
-        except ValueError as error:
-            print(f"mkdir: {error}")
-            return
+        if engine not in ("yt", "google"):
+            raise ValueError("Engine must be 'yt' or 'google'.")
 
-        if path.exists():
-            print(
-                f"mkdir: '{name}' "
-                "already exists."
-            )
-            return
-
-        path.mkdir(
-            parents=True,
-            exist_ok=False
-        )
-
-        print(
-            f"Directory '{name}' created."
-        )
-
-    def open(self, target):
-        try:
-            path = self.resolve(target)
-
-        except ValueError as error:
-            print(f"open: {error}")
-            return
-
-        if not path.exists():
-            print(
-                f"open: '{target}' "
-                "does not exist."
-            )
-            return
-
-        if path.is_dir():
-
-            if self.is_model(path):
-                self.open_model(path)
-            else:
-                self.current = path
-
-            return
-
-        print(
-            f"open: '{target}' "
-            "is not a directory or model."
-        )
-
-    # ---------------------------------------------------------
-    # OPEN MODEL
-    # ---------------------------------------------------------
-
-    def open_model(self, path):
-        model_name = path.name
-
-        print()
-        print(
-            f"Opening model: {model_name}"
-        )
-        print(
-            f"Path: {path}"
-        )
-        print()
-
-        print("1. Train")
-        print("2. Back")
-
-        choice = input(
-            "\nSelect: "
-        ).strip()
-
-        if choice == "1":
-
-            relative_model = path.relative_to(
-                self.root
-            )
-
-            train(
-                str(relative_model)
-            )
-
-        elif choice == "2":
-            return
-
-        else:
-            print(
-                "Invalid option."
-            )
-
-    # ---------------------------------------------------------
-    # CREATE MODEL
-    # ---------------------------------------------------------
-
-    def create_model(self):
-        name = SearchAIFileSystem.get_model_name()
-
-        # ---------------------------------------------------------
-        # ENGINE & QUERY SELECTION
-        # ---------------------------------------------------------
-
-        while True:
-            engine_input = input(
-                "\nSelect search engine (y/g/yt/gg/youtube/google): "
-            ).strip().lower()
-
-            if engine_input in ("y", "yt", "youtube"):
-                engine = "yt"
-                engine_display = "YouTube"
-                break
-
-            elif engine_input in ("g", "gg", "google"):
-                engine = "google"
-                engine_display = "Google"
-                break
-
-            print(
-                "Invalid choice. "
-                "Valid options: y, g, yt, gg, youtube, google."
-            )
-
-        query = input(
-            f"\nPermanent {engine_display} search query: "
-        ).strip()
-
-        if not query:
-            print(
-                "Query cannot be empty."
-            )
-            return
-
-        model_dir = self.current / name
-
-        if model_dir.exists():
-            print(
-                "A model with that name "
-                "already exists."
-            )
-            return
-
-        # ---------------------------------------------------------
-        # CREATE CRITERIA
-        # ---------------------------------------------------------
-
-        print(
-            "\nCreate criteria for this model."
-        )
-
-        print(
-            "Enter an empty name when "
-            "you're finished.\n"
-        )
-
-        criteria = []
-
-        while True:
-
-            criterion = input(
-                f"Criterion {len(criteria) + 1}: "
-            ).strip()
-
-            if not criterion:
-                break
-
-            criteria.append(
-                criterion
-            )
+        if not query.strip():
+            raise ValueError("Query cannot be empty.")
 
         if not criteria:
-            print(
-                "A model must have at least "
-                "one criterion."
-            )
-            return
+            raise ValueError("Criteria list cannot be empty.")
 
-        # ---------------------------------------------------------
-        # CONFIGURE NETWORK ARCHITECTURE
-        # ---------------------------------------------------------
+        model_dir = self.current / name
+        if model_dir.exists():
+            raise ValueError(f"Model or folder '{name}' already exists.")
 
-        print()
-        print(
-            "Configure neural network architecture."
-        )
+        # Create Model Directory
+        model_dir.mkdir(parents=True, exist_ok=False)
 
-        # ---------------------------------------------------------
-        # INPUT LAYER
-        # ---------------------------------------------------------
+        # Save Criteria
+        with open(model_dir / "criteria.json", "w", encoding="utf-8") as file:
+            json.dump(criteria, file, indent=4, ensure_ascii=False)
 
-        while True:
-
-            input_size_raw = input(
-                "\nInput layer size: "
-            ).strip()
-
-            try:
-                input_size = int(
-                    input_size_raw
-                )
-
-            except ValueError:
-                print(
-                    "Invalid input size. "
-                    "Enter a positive integer."
-                )
-                continue
-
-            if input_size <= 0:
-                print(
-                    "Input layer must contain "
-                    "at least one node."
-                )
-                continue
-
-            break
-
-        # ---------------------------------------------------------
-        # HIDDEN LAYERS
-        # ---------------------------------------------------------
-
-        print()
-        print(
-            "Enter hidden-layer sizes separated "
-            "by spaces."
-        )
-
-        print(
-            "Example: 128 64 32"
-        )
-
-        while True:
-
-            architecture_input = input(
-                "\nHidden layers: "
-            ).strip()
-
-            if not architecture_input:
-                print(
-                    "You must specify at least "
-                    "one hidden layer."
-                )
-                continue
-
-            try:
-                hidden_layers = [
-                    int(size)
-                    for size in
-                    architecture_input.split()
-                ]
-
-            except ValueError:
-                print(
-                    "Invalid architecture. "
-                    "Use positive integers separated "
-                    "by spaces."
-                )
-                continue
-
-            if any(
-                size <= 0
-                for size in hidden_layers
-            ):
-                print(
-                    "Every hidden layer must contain "
-                    "at least one node."
-                )
-                continue
-
-            break
-
-        # ---------------------------------------------------------
-        # OUTPUT LAYER
-        # ---------------------------------------------------------
-
-        while True:
-
-            output_size_raw = input(
-                "\nOutput layer size: "
-            ).strip()
-
-            try:
-                output_size = int(
-                    output_size_raw
-                )
-
-            except ValueError:
-                print(
-                    "Invalid output size. "
-                    "Enter a positive integer."
-                )
-                continue
-
-            if output_size <= 0:
-                print(
-                    "Output layer must contain "
-                    "at least one node."
-                )
-                continue
-
-            break
-
-        # ---------------------------------------------------------
-        # SHOW FINAL ARCHITECTURE
-        # ---------------------------------------------------------
-
-        architecture = [
-            input_size,
-            *hidden_layers,
-            output_size,
-        ]
-
-        print()
-
-        print(
-            "Network architecture:"
-        )
-
-        print(
-            " -> ".join(
-                map(
-                    str,
-                    architecture
-                )
-            )
-        )
-
-        confirm = input(
-            "\nCreate this network? (y/n): "
-        ).strip().lower()
-
-        if confirm != "y":
-
-            print(
-                "Model creation cancelled."
-            )
-            return
-
-        # ---------------------------------------------------------
-        # CREATE MODEL DIRECTORY
-        # ---------------------------------------------------------
-
-        model_dir.mkdir()
-
-        # ---------------------------------------------------------
-        # SAVE CRITERIA
-        # ---------------------------------------------------------
-
-        with open(
-            model_dir / "criteria.json",
-            "w",
-            encoding="utf-8"
-        ) as file:
-
-            json.dump(
-                criteria,
-                file,
-                indent=4,
-                ensure_ascii=False
-            )
-
-        # ---------------------------------------------------------
-        # CREATE NEURAL NETWORK
-        # ---------------------------------------------------------
-
+        # Instantiate Neural Network
         agent = DQNAgent(
             state_size=input_size,
             criterion_count=output_size,
             hidden_layers=hidden_layers,
         )
 
-        # ---------------------------------------------------------
-        # SAVE MODEL
-        # ---------------------------------------------------------
-
-        relative_model = (
-            model_dir.relative_to(
-                self.root
-            )
-        )
+        # Save Weights & Metadata
+        relative_model = model_dir.relative_to(self.root)
 
         save_model(
             agent,
@@ -638,84 +204,277 @@ class SearchAIFileSystem:
             output_size=output_size,
         )
 
-        # ---------------------------------------------------------
-        # RESULTS
-        # ---------------------------------------------------------
+        return {
+            "status": "success",
+            "name": name,
+            "engine": engine,
+            "path": str(relative_model)
+        }
 
-        print(
-            f"\nModel '{name}' created for {engine_display} search."
+    # ---------------------------------------------------------
+    # INTERACTIVE TUI METHODS
+    # ---------------------------------------------------------
+
+    def list_criteria(self, target):
+        try:
+            path = self.resolve(target)
+        except ValueError as error:
+            print(f"criteria: {error}")
+            return
+
+        if not path.exists():
+            print(f"criteria: '{target}' does not exist.")
+            return
+
+        if not self.is_model(path):
+            print(f"criteria: '{target}' is not a model.")
+            return
+
+        model_name = str(path.relative_to(self.root))
+        criteria = load_criteria(model_name)
+
+        if criteria is None:
+            print(f"Could not load criteria for model: {model_name}")
+            return
+
+        print(f"\nCriteria for: {path.name}")
+        print("=" * 60)
+
+        for index, criterion in enumerate(criteria, start=1):
+            print(f"{index}. {criterion}")
+
+        print("=" * 60)
+        print(f"Total criteria: {len(criteria)}")
+
+    @staticmethod
+    def get_model_name():
+        while True:
+            name = input("\nModel name: ").strip()
+
+            if not name:
+                print("Model name cannot be empty.")
+                continue
+
+            invalid_characters = '<>:"/\\|?*.'
+
+            if any(char in name for char in invalid_characters):
+                print('Model name contains an invalid character. Avoid: < > : " / \\ | ? *')
+                continue
+
+            return name
+
+    def dir(self):
+        items = sorted(
+            self.current.iterdir(),
+            key=lambda path: (not path.is_dir(), path.name.lower())
         )
 
-        print("\nCriteria:")
-
-        for index, criterion in enumerate(
-            criteria,
-            start=1
-        ):
-
-            print(
-                f"{index}. {criterion}"
-            )
+        if not items:
+            print("(empty)")
+            return
 
         print()
+        for item in items:
+            if item.is_dir():
+                if self.is_model(item):
+                    print(Fore.CYAN + f"[MODEL] {item.name}")
+                else:
+                    print(Fore.YELLOW + f"[DIR]   {item.name}")
+            else:
+                print(f"[FILE]  {item.name}")
 
-        print(
-            "Network architecture:"
-        )
+    def mkdir(self, name):
+        if not name:
+            print("Usage: mkdir <folder>")
+            return
 
-        print(
-            " -> ".join(
-                map(
-                    str,
-                    architecture
-                )
+        try:
+            path = self.resolve(name)
+        except ValueError as error:
+            print(f"mkdir: {error}")
+            return
+
+        if path.exists():
+            print(f"mkdir: '{name}' already exists.")
+            return
+
+        path.mkdir(parents=True, exist_ok=False)
+        print(f"Directory '{name}' created.")
+
+    def open(self, target):
+        try:
+            path = self.resolve(target)
+        except ValueError as error:
+            print(f"open: {error}")
+            return
+
+        if not path.exists():
+            print(f"open: '{target}' does not exist.")
+            return
+
+        if path.is_dir():
+            if self.is_model(path):
+                self.open_model(path)
+            else:
+                self.current = path
+            return
+
+        print(f"open: '{target}' is not a directory or model.")
+
+    def open_model(self, path):
+        model_name = path.name
+
+        print(f"\nOpening model: {model_name}\nPath: {path}\n")
+        print("1. Train")
+        print("2. Back")
+
+        choice = input("\nSelect: ").strip()
+
+        if choice == "1":
+            relative_model = path.relative_to(self.root)
+            train(str(relative_model))
+        elif choice == "2":
+            return
+        else:
+            print("Invalid option.")
+
+    def create_model(self):
+        name = SearchAIFileSystem.get_model_name()
+
+        while True:
+            engine_input = input("\nSelect search engine (y/g/yt/gg/youtube/google): ").strip().lower()
+
+            if engine_input in ("y", "yt", "youtube"):
+                engine = "yt"
+                engine_display = "YouTube"
+                break
+            elif engine_input in ("g", "gg", "google"):
+                engine = "google"
+                engine_display = "Google"
+                break
+
+            print("Invalid choice. Valid options: y, g, yt, gg, youtube, google.")
+
+        query = input(f"\nPermanent {engine_display} search query: ").strip()
+        if not query:
+            print("Query cannot be empty.")
+            return
+
+        model_dir = self.current / name
+        if model_dir.exists():
+            print("A model with that name already exists.")
+            return
+
+        print("\nCreate criteria for this model. Enter an empty name when finished.\n")
+
+        criteria = []
+        while True:
+            criterion = input(f"Criterion {len(criteria) + 1}: ").strip()
+            if not criterion:
+                break
+            criteria.append(criterion)
+
+        if not criteria:
+            print("A model must have at least one criterion.")
+            return
+
+        print("\nConfigure neural network architecture.")
+
+        while True:
+            input_size_raw = input("\nInput layer size: ").strip()
+            try:
+                input_size = int(input_size_raw)
+            except ValueError:
+                print("Invalid input size. Enter a positive integer.")
+                continue
+
+            if input_size <= 0:
+                print("Input layer must contain at least one node.")
+                continue
+            break
+
+        print("\nEnter hidden-layer sizes separated by spaces. Example: 128 64 32")
+
+        while True:
+            architecture_input = input("\nHidden layers: ").strip()
+            if not architecture_input:
+                print("You must specify at least one hidden layer.")
+                continue
+
+            try:
+                hidden_layers = [int(size) for size in architecture_input.split()]
+            except ValueError:
+                print("Invalid architecture. Use positive integers separated by spaces.")
+                continue
+
+            if any(size <= 0 for size in hidden_layers):
+                print("Every hidden layer must contain at least one node.")
+                continue
+            break
+
+        while True:
+            output_size_raw = input("\nOutput layer size: ").strip()
+            try:
+                output_size = int(output_size_raw)
+            except ValueError:
+                print("Invalid output size. Enter a positive integer.")
+                continue
+
+            if output_size <= 0:
+                print("Output layer must contain at least one node.")
+                continue
+            break
+
+        architecture = [input_size, *hidden_layers, output_size]
+
+        print("\nNetwork architecture:")
+        print(" -> ".join(map(str, architecture)))
+
+        confirm = input("\nCreate this network? (y/n): ").strip().lower()
+        if confirm != "y":
+            print("Model creation cancelled.")
+            return
+
+        # Trigger headless creation engine
+        try:
+            self.create_model_headless(
+                name=name,
+                engine=engine,
+                query=query,
+                criteria=criteria,
+                input_size=input_size,
+                hidden_layers=hidden_layers,
+                output_size=output_size
             )
-        )
-
-    # ---------------------------------------------------------
-    # DELETE
-    # ---------------------------------------------------------
+            print(f"\nModel '{name}' created for {engine_display} search.")
+        except Exception as err:
+            print(f"Error creating model: {err}")
 
     def delete(self, target):
         try:
             path = self.resolve(target)
-
         except ValueError as error:
             print(f"delete: {error}")
             return
 
         if not path.exists():
-            print(
-                f"delete: '{target}' "
-                "does not exist."
-            )
+            print(f"delete: '{target}' does not exist.")
             return
 
         if path == self.root:
-            print(
-                "delete: Cannot delete "
-                "SearchAI root."
-            )
+            print("delete: Cannot delete SearchAI root.")
             return
 
         if path.is_dir() and not self.is_model(path):
             item_type = "directory"
-
         elif self.is_model(path):
             item_type = "model"
-
         else:
             item_type = "file"
 
-        confirm = input(
-            f"Delete {item_type} "
-            f"'{path.name}'? (y/n): "
-        ).strip().lower()
-
+        confirm = input(f"Delete {item_type} '{path.name}'? (y/n): ").strip().lower()
         if confirm != "y":
-            print(
-                "Deletion cancelled."
-            )
+            print("Deletion cancelled.")
             return
 
         if path.is_dir():
@@ -723,103 +482,57 @@ class SearchAIFileSystem:
         else:
             path.unlink()
 
-        print(
-            f"Deleted '{path.name}'."
-        )
-
-    # ---------------------------------------------------------
-    # ROUND COUNT
-    # ---------------------------------------------------------
+        print(f"Deleted '{path.name}'.")
 
     def get_round_count(self, target):
         try:
             path = self.resolve(target)
-
         except ValueError as error:
-            print(
-                f"round: {error}"
-            )
+            print(f"round: {error}")
             return
 
         if not path.exists():
-            print(
-                f"round: '{target}' "
-                "does not exist."
-            )
+            print(f"round: '{target}' does not exist.")
             return
 
         if not self.is_model(path):
-            print(
-                f"round: '{target}' "
-                "is not a model."
-            )
+            print(f"round: '{target}' is not a model.")
             return
 
         round_file = path / "round.txt"
 
         if not round_file.exists():
             rounds = 0
-
         else:
             try:
-                rounds = int(
-                    round_file.read_text(
-                        encoding="utf-8"
-                    ).strip()
-                )
-
+                rounds = int(round_file.read_text(encoding="utf-8").strip())
             except ValueError:
                 rounds = 0
 
-        print()
-        print(
-            f"Training rounds: {rounds}"
-        )
+        print(f"\nTraining rounds: {rounds}")
 
     def increment_round(self, model_name):
-        model_path = (
-            self.root / model_name
-        )
-
-        round_file = (
-            model_path / "round.txt"
-        )
+        model_path = self.root / model_name
+        round_file = model_path / "round.txt"
 
         if round_file.exists():
             try:
-                rounds = int(
-                    round_file.read_text(
-                        encoding="utf-8"
-                    ).strip()
-                )
-
+                rounds = int(round_file.read_text(encoding="utf-8").strip())
             except ValueError:
                 rounds = 0
-
         else:
             rounds = 0
 
         rounds += 1
-
-        round_file.write_text(
-            str(rounds),
-            encoding="utf-8"
-        )
-
+        round_file.write_text(str(rounds), encoding="utf-8")
         return rounds
 
 
 # ---------------------------------------------------------
-# BANNERS
+# BANNERS & TUI
 # ---------------------------------------------------------
 
 def print_searchai_logo(logo_str: str):
-    """
-    Prints a multi-line ASCII logo in 4 quadrants:
-    Red (Top-Left), Yellow (Top-Right)
-    Blue (Bottom-Left), Green (Bottom-Right)
-    """
-
     RED = (252, 65, 61)
     YELLOW = (255, 190, 0)
     BLUE = (49, 134, 255)
@@ -829,7 +542,6 @@ def print_searchai_logo(logo_str: str):
         return f"\033[38;2;{r};{g};{b}m"
 
     RESET = "\033[0m"
-
     lines = logo_str.strip("\n").split("\n")
 
     if not lines:
@@ -846,7 +558,6 @@ def print_searchai_logo(logo_str: str):
         padded_line = line.ljust(width)
 
         for x, char in enumerate(padded_line):
-
             if char == " " or char == "\xa0":
                 colored_line += " "
                 continue
@@ -856,21 +567,12 @@ def print_searchai_logo(logo_str: str):
             else:
                 color = BLUE if x < mid_x else GREEN
 
-            colored_line += (
-                f"{get_color_code(*color)}{char}"
-            )
+            colored_line += f"{get_color_code(*color)}{char}"
 
         print(colored_line + RESET)
 
 
 def print_banner():
-    """
-    GitHub-compatible banner function.
-
-    The four-quadrant logo remains the actual banner
-    used by the TUI.
-    """
-
     ascii_logo = r"""
        _____                     _              _____ 
       / ____|                   | |       /\   |_   _|
@@ -879,121 +581,36 @@ def print_banner():
       ____) |  __/ (_| | | | (__| | | |/ ____ \ _| |_
      |_____/ \___|\__,_|_|  \___|_| |_/_/    \_\_____|
     """
-
     print_searchai_logo(ascii_logo)
 
 
-# ---------------------------------------------------------
-# HELP
-# ---------------------------------------------------------
-
 def print_help():
-    print()
-    print("SearchAI commands:")
-    print()
+    print("\nSearchAI commands:\n")
+    print("  cd <folder>       Change directory")
+    print("  cd ..             Go to parent directory")
+    print("  cd \\              Go to SearchAI root")
+    print("  dir               List directory")
+    print("  ls                List directory")
+    print("  pwd               Show current directory")
+    print("  mkdir <folder>    Create folder")
+    print("  open <name>       Open folder/model")
+    print("  create            Create model here")
+    print("  delete <name>     Delete model/folder")
+    print("  help              Show commands")
+    print("  exit              Exit SearchAI")
+    print("  round <model>      Show training round\n")
 
-    print(
-        "  cd <folder>       "
-        "Change directory"
-    )
-
-    print(
-        "  cd ..             "
-        "Go to parent directory"
-    )
-
-    print(
-        "  cd \\              "
-        "Go to SearchAI root"
-    )
-
-    print(
-        "  dir               "
-        "List directory"
-    )
-
-    print(
-        "  ls                "
-        "List directory"
-    )
-
-    print(
-        "  pwd               "
-        "Show current directory"
-    )
-
-    print(
-        "  mkdir <folder>    "
-        "Create folder"
-    )
-
-    print(
-        "  open <name>       "
-        "Open folder/model"
-    )
-
-    print(
-        "  create            "
-        "Create model here"
-    )
-
-    print(
-        "  delete <name>     "
-        "Delete model/folder"
-    )
-
-    print(
-        "  help              "
-        "Show commands"
-    )
-
-    print(
-        "  exit              "
-        "Exit SearchAI"
-    )
-
-    print(
-        "  round <model>      "
-        "Show training round"
-    )
-
-    print()
-
-
-# ---------------------------------------------------------
-# TUI
-# ---------------------------------------------------------
 
 def tui():
-    filesystem = SearchAIFileSystem(
-        MODEL_DIR
-    )
-
+    filesystem = SearchAIFileSystem(MODEL_DIR)
     print_banner()
-
-    print(
-        "SearchAI terminal initialized."
-    )
-
-    print(
-        "Type 'help' for commands."
-    )
+    print("SearchAI terminal initialized.\nType 'help' for commands.")
 
     while True:
-
         try:
-            command = input(
-                f"\nsearchai"
-                f"{filesystem.current_path()}> "
-            ).strip()
-
-        except (
-            KeyboardInterrupt,
-            EOFError
-        ):
-            print(
-                "\n\nGoodbye."
-            )
+            command = input(f"\nsearchai{filesystem.current_path()}> ").strip()
+        except (KeyboardInterrupt, EOFError):
+            print("\n\nGoodbye.")
             break
 
         if not command:
@@ -1001,174 +618,56 @@ def tui():
 
         try:
             parts = shlex.split(command)
-
         except ValueError as error:
-            print(
-                f"SearchAI: {error}"
-            )
+            print(f"SearchAI: {error}")
             continue
 
         if not parts:
             continue
 
         command_name = parts[0].lower()
-
-        argument = ""
-
-        if len(parts) > 1:
-            argument = " ".join(parts[1:])
-
-        # -------------------------
-        # cd
-        # -------------------------
+        argument = " ".join(parts[1:]) if len(parts) > 1 else ""
 
         if command_name == "cd":
-
             if not argument:
                 filesystem.pwd()
-                continue
-
-            filesystem.cd(
-                argument
-            )
-
-        # -------------------------
-        # dir / ls
-        # -------------------------
-
-        elif command_name in (
-            "dir",
-            "ls"
-        ):
-
+            else:
+                filesystem.cd(argument)
+        elif command_name in ("dir", "ls"):
             filesystem.dir()
-
-        # -------------------------
-        # pwd
-        # -------------------------
-
         elif command_name == "pwd":
-
             filesystem.pwd()
-
-        # -------------------------
-        # mkdir
-        # -------------------------
-
         elif command_name == "mkdir":
-
-            filesystem.mkdir(
-                argument
-            )
-
-        # -------------------------
-        # open
-        # -------------------------
-
+            filesystem.mkdir(argument)
         elif command_name == "open":
-
             if not argument:
-                print(
-                    "Usage: open <folder/model>"
-                )
-                continue
-
-            filesystem.open(
-                argument
-            )
-
-        # -------------------------
-        # create
-        # -------------------------
-
+                print("Usage: open <folder/model>")
+            else:
+                filesystem.open(argument)
         elif command_name == "create":
-
             filesystem.create_model()
-
-        # -------------------------
-        # delete
-        # -------------------------
-
-        elif command_name in (
-            "delete",
-            "del",
-            "rm"
-        ):
-
+        elif command_name in ("delete", "del", "rm"):
             if not argument:
-                print(
-                    "Usage: delete <name>"
-                )
-                continue
-
-            filesystem.delete(
-                argument
-            )
-
-        # -------------------------
-        # help
-        # -------------------------
-
+                print("Usage: delete <name>")
+            else:
+                filesystem.delete(argument)
         elif command_name == "help":
-
             print_help()
-
-        # -------------------------
-        # exit
-        # -------------------------
-
-        elif command_name in (
-            "exit",
-            "quit"
-        ):
-
-            print(
-                "\nGoodbye."
-            )
+        elif command_name in ("exit", "quit"):
+            print("\nGoodbye.")
             break
-
-        # -------------------------
-        # criteria
-        # -------------------------
-
         elif command_name == "criteria":
-
             if not argument:
-                print(
-                    "Usage: criteria <model>"
-                )
-                continue
-
-            filesystem.list_criteria(
-                argument
-            )
-
-        # -------------------------
-        # round
-        # -------------------------
-
+                print("Usage: criteria <model>")
+            else:
+                filesystem.list_criteria(argument)
         elif command_name == "round":
-
             if not argument:
-                print(
-                    "Usage: round <model>"
-                )
-                continue
-
-            filesystem.get_round_count(
-                argument
-            )
-
-        # -------------------------
-        # unknown
-        # -------------------------
-
+                print("Usage: round <model>")
+            else:
+                filesystem.get_round_count(argument)
         else:
-
-            print(
-                f"'{command_name}' "
-                "is not a SearchAI command."
-            )
+            print(f"'{command_name}' is not a SearchAI command.")
 
 
 if __name__ == "__main__":
