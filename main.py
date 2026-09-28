@@ -490,6 +490,7 @@ class SearchAIFileSystem:
 
     def open_model(self, path):
             model_name = path.name
+            relative_model = path.relative_to(self.root)
     
             print(f"\nOpening model: {model_name}\nPath: {path}\n")
             print("1. Train")
@@ -498,8 +499,15 @@ class SearchAIFileSystem:
             choice = input("\nSelect: ").strip()
     
             if choice == "1":
-                # Load search mode from metadata automatically
-                metadata = load_metadata(model_name)
+                # Load search mode from metadata automatically.
+                # IMPORTANT: metadata must be looked up using the full
+                # path relative to the SearchAI root (the same identifier
+                # train.py/model_manager.py use for get_model_dir), not
+                # just the leaf folder name. Using the leaf name causes
+                # nested models (e.g. models saved several folders deep)
+                # to fail this lookup silently and fall back to
+                # Lightweight mode even when configured as Diverse.
+                metadata = load_metadata(str(relative_model))
                 if metadata and "mode" in metadata:
                     search_mode = metadata["mode"]
                 else:
@@ -508,8 +516,6 @@ class SearchAIFileSystem:
                 # Convert string mode to boolean for train()
                 diverse_mode = (search_mode == "diverse")
     
-                relative_model = path.relative_to(self.root)
-                
                 train(str(relative_model), diverse_mode=diverse_mode)
                 
             elif choice == "2":
