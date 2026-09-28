@@ -142,6 +142,7 @@ function startCreationWizard() {
     wizardCriteria = [];
     document.getElementById('model-name').value = '';
     document.getElementById('model-query').value = '';
+    document.getElementById('model-mode').value = 'lightweight'; // Reset mode
     document.getElementById('criteria-input').value = '';
     document.getElementById('criteria-list').innerHTML = '';
     document.getElementById('creation-layer').style.display = 'flex';
@@ -172,15 +173,17 @@ function updateWizardUI() {
         document.getElementById('model-output-size').value = Math.max(1, wizardCriteria.length);
     }
 
-    if (wizardStep === 5) {
+if (wizardStep === 5) {
         const name = document.getElementById('model-name').value;
         const engine = document.getElementById('model-engine').value;
         const query = document.getElementById('model-query').value;
+        const mode = document.getElementById('model-mode').options[document.getElementById('model-mode').selectedIndex].text; // Get display text
         const hidden = document.getElementById('model-hidden-layers').value;
         
         document.getElementById('confirm-summary').innerHTML = `
             <strong>Name:</strong> ${name}<br>
             <strong>Engine:</strong> ${engine.toUpperCase()}<br>
+            <strong>Mode:</strong> ${mode}<br>
             <strong>Query:</strong> ${query}<br>
             <strong>Criteria Count:</strong> ${wizardCriteria.length}<br>
             <strong>Hidden Layers:</strong> [ ${hidden} ]
@@ -248,12 +251,17 @@ async function submitModel() {
     const hiddenLayers = hiddenStr.split(/\s+/).map(Number).filter(n => !isNaN(n) && n > 0);
 
     const payload = {
-        model_name: document.getElementById('model-name').value.trim(),
+        name: document.getElementById('model-name').value.trim(),
         engine: document.getElementById('model-engine').value,
         query: document.getElementById('model-query').value.trim(),
+        mode: document.getElementById('model-mode').value,
         criteria: wizardCriteria,
-        input_size: parseInt(document.getElementById('model-input-size').value, 10),
-        hidden_layers: hiddenLayers
+        input_size: parseInt(
+            document.getElementById('model-input-size').value,
+            10
+        ),
+        hidden_layers: hiddenLayers,
+        output_size: wizardCriteria.length
     };
 
     try {

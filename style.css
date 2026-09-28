@@ -1,9 +1,22 @@
 body {
-    background-color: red;
-    font-family: 'Arial';
+    width: 100vw;
+    height: 100vh;
     margin: 0;
     padding: 0;
+    font-family: 'Arial';
+    background: conic-gradient(
+      from -90deg,
+      rgb(49, 134, 255) 0% 25%,    /* Top Left (Blue) */
+      rgb(252, 65, 61) 25% 50%,    /* Top Right (Red) */
+      rgb(0, 175, 87) 50% 75%,     /* Bottom Right (Green) */
+      rgb(255, 190, 0) 75% 100%    /* Bottom Left (Yellow) */
+    );
+    background-attachment: fixed;
 }
+
+
+
+/* You can remove the old .quadrant-background class unless you are using it on an explicit inner div */
 
 p {
     color: white;

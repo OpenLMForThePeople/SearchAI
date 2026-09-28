@@ -12,6 +12,7 @@ from dqn_agent import DQNAgent
 from model_manager import (
     save_model,
     load_criteria,
+    load_metadata,
     get_models_dir,
 )
 
@@ -151,6 +152,7 @@ class SearchAIFileSystem:
         name: str,
         engine: str,
         query: str,
+        mode: str,
         criteria: list,
         input_size: int,
         hidden_layers: list,
@@ -161,13 +163,16 @@ class SearchAIFileSystem:
         """
         invalid_characters = '<>:"/\\|?*.'
         if any(char in name for char in invalid_characters):
-            raise ValueError(f"Model name contains invalid characters.")
+            raise ValueError("Model name contains invalid characters.")
 
         if engine not in ("yt", "google"):
             raise ValueError("Engine must be 'yt' or 'google'.")
 
         if not query.strip():
             raise ValueError("Query cannot be empty.")
+            
+        if mode not in ("lightweight", "diverse"):
+            raise ValueError("Mode must be 'lightweight' or 'diverse'.")
 
         if not criteria:
             raise ValueError("Criteria list cannot be empty.")
@@ -199,6 +204,7 @@ class SearchAIFileSystem:
             criteria,
             query,
             engine=engine,
+            mode=mode,
             hidden_layers=hidden_layers,
             input_size=input_size,
             output_size=output_size,
@@ -208,8 +214,136 @@ class SearchAIFileSystem:
             "status": "success",
             "name": name,
             "engine": engine,
+            "mode": mode,
             "path": str(relative_model)
         }
+
+    def create_model(self):
+            name = SearchAIFileSystem.get_model_name()
+    
+            while True:
+                engine_input = input("\nSelect search engine (y/g/yt/gg/youtube/google): ").strip().lower()
+    
+                if engine_input in ("y", "yt", "youtube"):
+                    engine = "yt"
+                    engine_display = "YouTube"
+                    break
+                elif engine_input in ("g", "gg", "google"):
+                    engine = "google"
+                    engine_display = "Google"
+                    break
+                
+                print("Invalid choice. Valid options: y, g, yt, gg, youtube, google.")
+    
+            query = input(f"\nPermanent {engine_display} search query: ").strip()
+            if not query:
+                print("Query cannot be empty.")
+                return
+    
+            # --- ADDED: Retrieval Mode Prompt ---
+            print("\nSelect Retrieval Mode:")
+            print("1. Lightweight (Fast, Top 10 Results)")
+            print("2. Diverse (Deep Search, Randomized Pages)")
+            
+            mode_choice = ""
+            while mode_choice not in ['1', '2']:
+                mode_choice = input("Enter choice (1 or 2) [Default: 1]: ").strip()
+                if not mode_choice:
+                    mode_choice = '1'
+                    
+            search_mode = "lightweight" if mode_choice == '1' else "diverse"
+            # ------------------------------------
+    
+            model_dir = self.current / name
+            if model_dir.exists():
+                print("A model with that name already exists.")
+                return
+    
+            print("\nCreate criteria for this model. Enter an empty name when finished.\n")
+    
+            criteria = []
+            while True:
+                criterion = input(f"Criterion {len(criteria) + 1}: ").strip()
+                if not criterion:
+                    break
+                criteria.append(criterion)
+    
+            if not criteria:
+                print("A model must have at least one criterion.")
+                return
+    
+            print("\nConfigure neural network architecture.")
+    
+            while True:
+                input_size_raw = input("\nInput layer size: ").strip()
+                try:
+                    input_size = int(input_size_raw)
+                except ValueError:
+                    print("Invalid input size. Enter a positive integer.")
+                    continue
+                
+                if input_size <= 0:
+                    print("Input layer must contain at least one node.")
+                    continue
+                break
+            
+            print("\nEnter hidden-layer sizes separated by spaces. Example: 128 64 32")
+    
+            while True:
+                architecture_input = input("\nHidden layers: ").strip()
+                if not architecture_input:
+                    print("You must specify at least one hidden layer.")
+                    continue
+                
+                try:
+                    hidden_layers = [int(size) for size in architecture_input.split()]
+                except ValueError:
+                    print("Invalid architecture. Use positive integers separated by spaces.")
+                    continue
+                
+                if any(size <= 0 for size in hidden_layers):
+                    print("Every hidden layer must contain at least one node.")
+                    continue
+                break
+            
+            while True:
+                output_size_raw = input("\nOutput layer size: ").strip()
+                try:
+                    output_size = int(output_size_raw)
+                except ValueError:
+                    print("Invalid output size. Enter a positive integer.")
+                    continue
+                
+                if output_size <= 0:
+                    print("Output layer must contain at least one node.")
+                    continue
+                break
+            
+            architecture = [input_size, *hidden_layers, output_size]
+    
+            print("\nNetwork architecture:")
+            print(" -> ".join(map(str, architecture)))
+    
+            confirm = input("\nCreate this network? (y/n): ").strip().lower()
+            if confirm != "y":
+                print("Model creation cancelled.")
+                return
+    
+            # Trigger headless creation engine with the new mode parameter
+            try:
+                self.create_model_headless(
+                    name=name,
+                    engine=engine,
+                    query=query,
+                    mode=search_mode,          # <-- Added mode here
+                    criteria=criteria,
+                    input_size=input_size,
+                    hidden_layers=hidden_layers,
+                    output_size=output_size
+                )
+                print(f"\nModel '{name}' created for {engine_display} search ({search_mode} mode).")
+            except Exception as err:
+                print(f"Error creating model: {err}")
 
     # ---------------------------------------------------------
     # INTERACTIVE TUI METHODS
@@ -355,133 +489,33 @@ class SearchAIFileSystem:
         print(f"open: '{target}' is not a directory or model.")
 
     def open_model(self, path):
-        model_name = path.name
-
-        print(f"\nOpening model: {model_name}\nPath: {path}\n")
-        print("1. Train")
-        print("2. Back")
-
-        choice = input("\nSelect: ").strip()
-
-        if choice == "1":
-            relative_model = path.relative_to(self.root)
-            train(str(relative_model))
-        elif choice == "2":
-            return
-        else:
-            print("Invalid option.")
-
-    def create_model(self):
-        name = SearchAIFileSystem.get_model_name()
-
-        while True:
-            engine_input = input("\nSelect search engine (y/g/yt/gg/youtube/google): ").strip().lower()
-
-            if engine_input in ("y", "yt", "youtube"):
-                engine = "yt"
-                engine_display = "YouTube"
-                break
-            elif engine_input in ("g", "gg", "google"):
-                engine = "google"
-                engine_display = "Google"
-                break
-
-            print("Invalid choice. Valid options: y, g, yt, gg, youtube, google.")
-
-        query = input(f"\nPermanent {engine_display} search query: ").strip()
-        if not query:
-            print("Query cannot be empty.")
-            return
-
-        model_dir = self.current / name
-        if model_dir.exists():
-            print("A model with that name already exists.")
-            return
-
-        print("\nCreate criteria for this model. Enter an empty name when finished.\n")
-
-        criteria = []
-        while True:
-            criterion = input(f"Criterion {len(criteria) + 1}: ").strip()
-            if not criterion:
-                break
-            criteria.append(criterion)
-
-        if not criteria:
-            print("A model must have at least one criterion.")
-            return
-
-        print("\nConfigure neural network architecture.")
-
-        while True:
-            input_size_raw = input("\nInput layer size: ").strip()
-            try:
-                input_size = int(input_size_raw)
-            except ValueError:
-                print("Invalid input size. Enter a positive integer.")
-                continue
-
-            if input_size <= 0:
-                print("Input layer must contain at least one node.")
-                continue
-            break
-
-        print("\nEnter hidden-layer sizes separated by spaces. Example: 128 64 32")
-
-        while True:
-            architecture_input = input("\nHidden layers: ").strip()
-            if not architecture_input:
-                print("You must specify at least one hidden layer.")
-                continue
-
-            try:
-                hidden_layers = [int(size) for size in architecture_input.split()]
-            except ValueError:
-                print("Invalid architecture. Use positive integers separated by spaces.")
-                continue
-
-            if any(size <= 0 for size in hidden_layers):
-                print("Every hidden layer must contain at least one node.")
-                continue
-            break
-
-        while True:
-            output_size_raw = input("\nOutput layer size: ").strip()
-            try:
-                output_size = int(output_size_raw)
-            except ValueError:
-                print("Invalid output size. Enter a positive integer.")
-                continue
-
-            if output_size <= 0:
-                print("Output layer must contain at least one node.")
-                continue
-            break
-
-        architecture = [input_size, *hidden_layers, output_size]
-
-        print("\nNetwork architecture:")
-        print(" -> ".join(map(str, architecture)))
-
-        confirm = input("\nCreate this network? (y/n): ").strip().lower()
-        if confirm != "y":
-            print("Model creation cancelled.")
-            return
-
-        # Trigger headless creation engine
-        try:
-            self.create_model_headless(
-                name=name,
-                engine=engine,
-                query=query,
-                criteria=criteria,
-                input_size=input_size,
-                hidden_layers=hidden_layers,
-                output_size=output_size
-            )
-            print(f"\nModel '{name}' created for {engine_display} search.")
-        except Exception as err:
-            print(f"Error creating model: {err}")
+            model_name = path.name
+    
+            print(f"\nOpening model: {model_name}\nPath: {path}\n")
+            print("1. Train")
+            print("2. Back")
+    
+            choice = input("\nSelect: ").strip()
+    
+            if choice == "1":
+                # Load search mode from metadata automatically
+                metadata = load_metadata(model_name)
+                if metadata and "mode" in metadata:
+                    search_mode = metadata["mode"]
+                else:
+                    search_mode = "lightweight"
+    
+                # Convert string mode to boolean for train()
+                diverse_mode = (search_mode == "diverse")
+    
+                relative_model = path.relative_to(self.root)
+                
+                train(str(relative_model), diverse_mode=diverse_mode)
+                
+            elif choice == "2":
+                return
+            else:
+                print("Invalid option.")
 
     def delete(self, target):
         try:

@@ -23,7 +23,7 @@ def search_youtube(query: str, max_results: int = 10) -> list[dict]:
         videos.append({
             "id": entry.get("id"),
             "title": entry.get("title"),
-            "url": entry.get("url"),
+            "url": f"https://www.youtube.com/watch?v={entry.get('id')}",
             "channel": entry.get("channel"),
             "duration": entry.get("duration"),
             "view_count": entry.get("view_count"),

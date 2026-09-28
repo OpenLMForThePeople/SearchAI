@@ -52,19 +52,21 @@ Once you have installed the tool, you can create your model.
 1. Navigate to the folder where you want to create your model via `cd [folder]`
 2. Give it a name.
 3. Give it your search query.
-4. Give it criteria to follow. You can add as many criteria as you need!
-5. Decide the shape of your model's neural network. The output size must match the number of criteria. A good structure is `input{o}  hidden{2o 2o} output{o}` where `o` is the output size (Do not forget, it must match the amount of criteria!) and `2o` is double the output size.
-6. Once done, type `open <model>` and type `1` to train it.
-7. When you reach the first video (indicated by the `1/10`), answer a number between 0 and 1 depending on how close the video is to satisfying your criteria. If you need to interrupt the training session, either enter `I` or `Ctrl+C`. If you see numbers between 0 and 1, no worries! Those are just your model's predictions!
-8. After answering for all 10 videos, the model will learn until it is done. Then, it will output a `csv` file for you to view.
+4. Decide its searching mode. (Lightweight allows duplicates which is faster, while Diverse searches until all videos are unique, thus making it performance heavy.)
+5. Give it criteria to follow. You can add as many criteria as you need!
+6. Decide the shape of your model's neural network. The output size must match the number of criteria. A good structure is `input{o}  hidden{2o 2o} output{o}` where `o` is the output size (Do not forget, it must match the amount of criteria!) and `2o` is double the output size.
+7. Once done, type `open <model>` and type `1` to train it.
+8. When you reach the first video (indicated by the `1/10`), answer a number between 0 and 1 depending on how close the video is to satisfying your criteria. If you need to interrupt the training session, either enter `I` or `Ctrl+C`. If you see numbers between 0 and 1, no worries! Those are just your model's predictions!
+9. After answering for all 10 videos, the model will learn until it is done. Then, it will output a `csv` file for you to view.
 
 ## Website
 
 1. Navigate to the folder where you want to create your model via clicking
 2. Give it a name.
 3. Give it your search query.
-4. Give it criteria to follow. You can add as many criteria as you need!
-5. Decide the shape of your model's neural network. The output size must match the number of criteria. A good structure is `input{o}  hidden{2o 2o} output{o}` where `o` is the output size (Do not forget, it must match the amount of criteria!) and `2o` is double the output size.
-5. Once done, click on a button with your model's name on it.
-6. When you reach the first video (indicated by the `1/10`), answer a number between 0 and 1 depending on how close the video is to satisfying your criteria. If you need to interrupt the training session, press "Interrupt". If you see numbers between 0 and 1, no worries! Those are just your model's predictions!
-7. After answering for all 10 videos, the model will learn until it is done. Then, it will output a `csv` file for you to view.
+4. Decide its searching mode. (Lightweight allows duplicates which is faster, while Diverse searches until all videos are unique, thus making it performance heavy.)
+5. Give it criteria to follow. You can add as many criteria as you need!
+6. Decide the shape of your model's neural network. The output size must match the number of criteria. A good structure is `input{o}  hidden{2o 2o} output{o}` where `o` is the output size (Do not forget, it must match the amount of criteria!) and `2o` is double the output size.
+7. Once done, click on a button with your model's name on it.
+8. When you reach the first video (indicated by the `1/10`), answer a number between 0 and 1 depending on how close the video is to satisfying your criteria. If you need to interrupt the training session, press "Interrupt". If you see numbers between 0 and 1, no worries! Those are just your model's predictions!
+9. After answering for all 10 videos, the model will learn until it is done. Then, it will output a `csv` file for you to view.

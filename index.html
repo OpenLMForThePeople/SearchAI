@@ -40,8 +40,16 @@
                         <option value="yt">YouTube</option>
                         <option value="google">Google</option>
                     </select>
+                    
                     <label>Permanent Query:</label>
                     <input type="text" id="model-query" placeholder="e.g. machine learning tutorial">
+                    
+                    <!-- NEW: Diverse vs Lightweight Mode -->
+                    <label>Retrieval Mode:</label>
+                    <select id="model-mode">
+                        <option value="lightweight">Lightweight (Fast, Top 10 Results)</option>
+                        <option value="diverse">Diverse (Deep Search, Randomized Pages)</option>
+                    </select>
                 </div>
 
                 <!-- Step 3: Criteria -->
